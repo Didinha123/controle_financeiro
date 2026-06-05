@@ -1,6 +1,6 @@
 // ── SHEETS CONFIG ─────────────────────────────────────────────────────────────
 // Cole aqui a URL do Web App do Google Apps Script
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxs9F_y3Kw0BsajDa3pjqTaMFAbGuUs-FK27gEOtt64i6Qv7xVD8bmITeKASRtwiS2mgQ/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwWK6JeaeBx9v4L28WtGoT6fxk2fukKdim4IDNPdj4Mv00yqYyq/exec';
 
 async function loadFromSheets() {
   if (!SHEETS_URL || SHEETS_URL.includes('COLE_AQUI')) return;
