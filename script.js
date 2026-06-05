@@ -1,3 +1,41 @@
+// ── SHEETS CONFIG ─────────────────────────────────────────────────────────────
+// Cole aqui a URL do Web App do Google Apps Script
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxs9F_y3Kw0BsajDa3pjqTaMFAbGuUs-FK27gEOtt64i6Qv7xVD8bmITeKASRtwiS2mgQ/exec';
+
+async function loadFromSheets() {
+  if (!SHEETS_URL || SHEETS_URL.includes('COLE_AQUI')) return;
+  try {
+    const url = SHEETS_URL + '?d=' + encodeURIComponent(JSON.stringify({ action: 'loadAll' }));
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.ok && json.data) {
+      const d = json.data;
+      lancamentos  = d.lancamentos  || {};
+      metasList    = d.metas        || [];
+      investimentos = d.investimentos || [];
+      cartoes      = d.cartoes      || [{ id:1, nome:'Nubank', limite:0 }];
+      // Recalcula nextId para evitar duplicatas
+      let maxId = 0;
+      Object.values(lancamentos).forEach(arr => arr.forEach(l => { if(l.id > maxId) maxId = l.id; }));
+      nextId = maxId + 1;
+      let maxMeta = 0; metasList.forEach(m => { if(m.id > maxMeta) maxMeta = m.id; }); nextMetaId = maxMeta + 1;
+      let maxInv  = 0; investimentos.forEach(i => { if(i.id > maxInv) maxInv = i.id; }); nextInvId  = maxInv  + 1;
+      let maxCart = 0; cartoes.forEach(c => { if(c.id > maxCart) maxCart = c.id; }); nextCartaoId = maxCart + 1;
+      updateCatSelect(); updateMetaCatSelect(); updateCartaoSelect(); updateInvSelect();
+      renderAll();
+    }
+  } catch(e) { console.warn('Sheets sync error:', e.message); }
+}
+
+async function saveToSheets() {
+  if (!SHEETS_URL || SHEETS_URL.includes('COLE_AQUI')) return;
+  try {
+    const payload = { lancamentos, metas: metasList, investimentos, cartoes };
+    const url = SHEETS_URL + '?d=' + encodeURIComponent(JSON.stringify({ action: 'saveAll', payload }));
+    await fetch(url);
+  } catch(e) { console.warn('Sheets save error:', e.message); }
+}
+
 const MONTHS = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const CAT_RECEITAS = ['Salário João','Salário Maria','Receitas 3','Receitas 4','Receitas 5','Receitas 6','Receitas 7','Receitas 8','Receitas 9','Receitas 10'];
@@ -353,12 +391,12 @@ function saveInv() {
   const obj={id:editInvIdModal||nextInvId++,data:$('fi-data').value,tipo:$('fi-tipo').value,deonde:$('fi-deonde').value,valor,obs:$('fi-obs').value};
   if(editInvIdModal){const i=investimentos.findIndex(x=>x.id===editInvIdModal);if(i>=0) investimentos[i]=obj;}
   else investimentos.push(obj);
-  const wasEdit=editInvIdModal; editInvIdModal=null; closeModalEl($('invModal')); renderInv(); renderDashboard(); showToast(wasEdit?'Investimento atualizado!':'Investimento adicionado!');
+  const wasEdit=editInvIdModal; editInvIdModal=null; closeModalEl($('invModal')); renderInv(); renderDashboard(); saveToSheets(); showToast(wasEdit?'Investimento atualizado!':'Investimento adicionado!');
 }
 
 async function deleteInv(id) {
   if(!await customConfirm('Remover este investimento?')) return;
-  investimentos=investimentos.filter(i=>i.id!==id); renderInv(); renderDashboard(); showToast('Investimento removido.');
+  investimentos=investimentos.filter(i=>i.id!==id); renderInv(); renderDashboard(); saveToSheets(); showToast('Investimento removido.');
 }
 
 // ── CARTÕES ───────────────────────────────────────────────────────────────────
@@ -390,12 +428,12 @@ $('btnCartaoSave').addEventListener('click',()=>{
   const nome=$('fc-nome').value.trim();
   if(!nome){showToast('Informe o nome do cartão');return;}
   cartoes.push({id:nextCartaoId++,nome,limite:parseFloat($('fc-limite').value)||0});
-  updateCartaoSelect(); updateInvSelect(); closeModalEl($('cartaoModal')); renderCartoes(); showToast('Cartão adicionado!');
+  updateCartaoSelect(); updateInvSelect(); closeModalEl($('cartaoModal')); renderCartoes(); saveToSheets(); showToast('Cartão adicionado!');
 });
 
 async function deleteCartao(id) {
   if(!await customConfirm('Remover este cartão?')) return;
-  cartoes=cartoes.filter(c=>c.id!==id); updateCartaoSelect(); renderCartoes(); showToast('Cartão removido.');
+  cartoes=cartoes.filter(c=>c.id!==id); updateCartaoSelect(); renderCartoes(); saveToSheets(); showToast('Cartão removido.');
 }
 
 // ── OVERLAY CLOSE ─────────────────────────────────────────────────────────────
@@ -410,4 +448,4 @@ updateMetaCatSelect();
 updateCartaoSelect();
 updateInvSelect();
 buildMonthTabs();
-renderAll();
+loadFromSheets().then(() => { if (!SHEETS_URL || SHEETS_URL.includes('COLE_AQUI')) renderAll(); });
